@@ -28,12 +28,13 @@
 #include "ofx/IO/SerialDeviceUtils.h"
 #include "ofx/IO/PathFilterCollection.h"
 
+#include "ofx/IO/SerialDeviceUtilsWin32.h"
 
 namespace ofx {
 namespace IO {
 
 
-
+/*
 #ifdef TARGET_WIN32
 
 #include <winbase.h>
@@ -136,7 +137,7 @@ void SerialDeviceUtils::enumerateWin32Ports()
 }
 
 #endif
-
+*/
 
 
 std::vector<SerialDeviceInfo> SerialDeviceUtils::getDevices(const std::string& regexPattern,
@@ -146,6 +147,17 @@ std::vector<SerialDeviceInfo> SerialDeviceUtils::getDevices(const std::string& r
     std::vector<SerialDeviceInfo> devices;
     std::vector<std::string> devicePaths;
 
+#ifdef TARGET_WIN32
+    //! windows
+    SerialDeviceUtilsWin32 &singleton = SerialDeviceUtilsWin32::getInstance();
+    singleton.enumerateWin32Ports();
+	ofLogNotice("SerialDeviceUtils::getDevices") << "found " << singleton.nPorts << " devices";
+	for (int i = 0; i < singleton.nPorts; i++){
+        SerialDeviceInfo deviceInfo(std::string(singleton.portNamesShort[i]));
+        devices.push_back(deviceInfo);
+	}
+    //
+#else
     std::string _regexPattern;
 
     if(!regexPattern.empty())
@@ -191,6 +203,7 @@ std::vector<SerialDeviceInfo> SerialDeviceUtils::getDevices(const std::string& r
         devices.push_back(deviceInfo);
         ++iter;
     }
+#endif
 
     return devices;
 }
