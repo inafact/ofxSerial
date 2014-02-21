@@ -146,18 +146,6 @@ std::vector<SerialDeviceInfo> SerialDeviceUtils::getDevices(const std::string& r
 {
     std::vector<SerialDeviceInfo> devices;
     std::vector<std::string> devicePaths;
-
-#ifdef TARGET_WIN32
-    //! windows
-    SerialDeviceUtilsWin32 &singleton = SerialDeviceUtilsWin32::getInstance();
-    singleton.enumerateWin32Ports();
-	ofLogNotice("SerialDeviceUtils::getDevices") << "found " << singleton.nPorts << " devices";
-	for (int i = 0; i < singleton.nPorts; i++){
-        SerialDeviceInfo deviceInfo(std::string(singleton.portNamesShort[i]));
-        devices.push_back(deviceInfo);
-	}
-    //
-#else
     std::string _regexPattern;
 
     if(!regexPattern.empty())
@@ -178,14 +166,30 @@ std::vector<SerialDeviceInfo> SerialDeviceUtils::getDevices(const std::string& r
             case OF_TARGET_LINUXARMV7L: // arm v7 little endian
                 _regexPattern = ".*/tty.*";
                 break;
-            case OF_TARGET_ANDROID:
             case OF_TARGET_WINGCC:
             case OF_TARGET_WINVS:
+                _regexPattern = "COM[1-9]";
+                break;
+            case OF_TARGET_ANDROID:
                 ofLogError("SerialDeviceUtils::getDevices") << "Not yet implemented for this platform.";
                 return devices;
         }
     }
 
+#ifdef TARGET_WIN32
+    //! windows
+    SerialDeviceUtilsWin32 &singleton = SerialDeviceUtilsWin32::getInstance();
+    singleton.enumerateWin32Ports();
+	ofLogNotice("SerialDeviceUtils::getDevices") << "found " << singleton.nPorts << " devices";
+	for (int i = 0; i < singleton.nPorts; i++){
+        if(Poco::RegularExpression::match(std::string(singleton.portNamesShort[i]), _regexPattern, regexOptions)){
+            ofLogNotice("SerialDeviceUtils::getDevices") << "matched port" << std::string(singleton.portNamesShort[i]);
+            SerialDeviceInfo deviceInfo(std::string(singleton.portNamesShort[i]));
+            devices.push_back(deviceInfo);
+        }
+	}
+    //
+#else
     DeviceFilter deviceFilter;
     RegexPathFilter pathFilter(_regexPattern, regexOptions, regexStudy);
     PathFilterCollection filters;
